@@ -1,0 +1,34 @@
+MAP
+    CONFIG "MS_ERRORFILE" "/maps/WMS/USGS/usgs_error.txt"
+    DEBUG 5
+    NAME "USGS"
+    SIZE 1000 1000
+    UNITS meters    
+
+    EXTENT 541500 4173000 558000 4186500
+    PROJECTION
+        'init=epsg:26910'
+    END #PROJECTION
+
+    IMAGETYPE JPEG
+
+    WEB        
+        METADATA
+          'ows_title'           'USGS'
+          'ows_srs'             'EPSG:26910'
+          'wms_feature_info_mime_type' 'text/html'
+          'ows_enable_request'   '*'
+        END 
+    END 
+
+    LAYER
+        NAME "San_Francisco_2015"
+        METADATA
+          'ows_title' 'San Francisco 2015'
+        END
+        TYPE RASTER
+        STATUS  ON
+        DATA "/maps/Data/San_Francisco/San_Francisco_2015.vrt"
+        PROCESSING "BANDS=1,2,3"
+    END    
+END 

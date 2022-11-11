@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapcache>
+    <grid name="San_Francisco">
+        <extent>541500 4173000 558000 4186500</extent>
+        <origin>top-left</origin>
+        <srs>EPSG:26910</srs>
+        <units>m</units>
+        <size>220 180</size>
+        <resolutions>75 37.5 18.75 9.375 4.6875 2.34375 1.171875 0.5859375 0.29296875 0.146484375 0.0732421875</resolutions>
+    </grid>
+    <source name = "san_francisco_2015" type = "wms">
+        <getmap>
+            <params>
+                <FORMAT>png</FORMAT>
+                <LAYERS>San_Francisco_2015</LAYERS>
+            </params>
+        </getmap>
+        <http>
+            <url>http://mapserver/cgi-bin/mapserv.fcgi?map=/maps/WMS/USGS/USGS.map</url>
+        </http>
+    </source>
+    <cache name="disk" type="disk">
+        <base>/var/sig/tiles</base>
+        <symlink_blank/>
+    </cache>
+    <tileset name = "San_Francisco_2015">
+        <source>san_francisco_2015</source>
+        <cache>disk</cache>
+        <grid>San_Francisco</grid>
+        <format>JPEG</format>
+        <metatile>10 10</metatile>
+        <metabuffer>10</metabuffer>
+        <auto_expire>2592000</auto_expire>
+    </tileset>
+    <locker type="disk">
+        <directory>/tmp</directory>
+        <retry>0.01</retry>
+        <timeout>60</timeout>
+    </locker>
+    <service type="wmts" enabled="true"/>
+</mapcache>

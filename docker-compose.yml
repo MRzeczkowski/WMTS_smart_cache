@@ -1,0 +1,15 @@
+version: '1.0.0'
+services:
+  mapserver:
+    build: ./mapserver/.
+    ports:
+      - "8182:80"
+    volumes:
+      - ./maps:/maps
+    container_name: mapserver
+
+  mapcache:
+    build: ./mapcache/.
+    ports:
+      - "8183:80"
+    container_name: mapcache

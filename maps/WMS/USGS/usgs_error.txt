@@ -1,0 +1,33 @@
+[Tue Nov  8 22:33:04 2022].530546 CGI Request 1 on process 69
+[Tue Nov  8 22:33:04 2022].575017 mapserv request processing time (msLoadMap not incl.): 0.044s
+[Tue Nov  8 22:33:04 2022].575029 msFreeMap(): freeing map at 0x320e6340.
+[Wed Nov  9 17:24:36 2022].922634 CGI Request 1 on process 70
+[Wed Nov  9 17:24:36 2022].923280 msDrawMap(): rendering using outputformat named png (AGG/PNG).
+[Wed Nov  9 17:24:36 2022].923289 msDrawMap(): WMS/WFS set-up and query, 0.000s
+[Wed Nov  9 17:24:36 2022].923308 msDrawRasterLayerLow(San_Francisco_2015): entering.
+[Wed Nov  9 17:24:37 2022].133948 msDrawMap(): Layer 0 (San_Francisco_2015), 0.211s
+[Wed Nov  9 17:24:37 2022].133974 msDrawMap(): Drawing Label Cache, 0.000s
+[Wed Nov  9 17:24:37 2022].133977 msDrawMap() total time: 0.211s
+[Wed Nov  9 17:24:37 2022].137700 msSaveImage(stdout) total time: 0.004s
+[Wed Nov  9 17:24:37 2022].137765 mapserv request processing time (msLoadMap not incl.): 0.215s
+[Wed Nov  9 17:24:37 2022].137770 msFreeMap(): freeing map at 0x355a4790.
+[Wed Nov  9 17:29:27 2022].484088 CGI Request 2 on process 70
+[Wed Nov  9 17:29:27 2022].485976 msDrawMap(): rendering using outputformat named png (AGG/PNG).
+[Wed Nov  9 17:29:27 2022].485986 msDrawMap(): WMS/WFS set-up and query, 0.000s
+[Wed Nov  9 17:29:27 2022].485995 msDrawRasterLayerLow(San_Francisco_2015): entering.
+[Wed Nov  9 17:29:27 2022].494230 msDrawMap(): Layer 0 (San_Francisco_2015), 0.008s
+[Wed Nov  9 17:29:27 2022].494256 msDrawMap(): Drawing Label Cache, 0.000s
+[Wed Nov  9 17:29:27 2022].494261 msDrawMap() total time: 0.010s
+[Wed Nov  9 17:29:27 2022].517327 msSaveImage(stdout) total time: 0.023s
+[Wed Nov  9 17:29:27 2022].517553 mapserv request processing time (msLoadMap not incl.): 0.033s
+[Wed Nov  9 17:29:27 2022].517560 msFreeMap(): freeing map at 0x355a4790.
+[Wed Nov  9 19:46:32 2022].835314 CGI Request 3 on process 70
+[Wed Nov  9 19:46:32 2022].846493 msDrawMap(): rendering using outputformat named png (AGG/PNG).
+[Wed Nov  9 19:46:32 2022].846522 msDrawMap(): WMS/WFS set-up and query, 0.000s
+[Wed Nov  9 19:46:32 2022].846532 msDrawRasterLayerLow(San_Francisco_2015): entering.
+[Wed Nov  9 19:46:32 2022].877044 msDrawMap(): Layer 0 (San_Francisco_2015), 0.031s
+[Wed Nov  9 19:46:32 2022].877080 msDrawMap(): Drawing Label Cache, 0.000s
+[Wed Nov  9 19:46:32 2022].877083 msDrawMap() total time: 0.042s
+[Wed Nov  9 19:46:32 2022].928057 msSaveImage(stdout) total time: 0.051s
+[Wed Nov  9 19:46:32 2022].930842 mapserv request processing time (msLoadMap not incl.): 0.096s
+[Wed Nov  9 19:46:32 2022].930857 msFreeMap(): freeing map at 0x358d4760.
