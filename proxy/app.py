@@ -1,24 +1,31 @@
 from flask import Flask, request, Response
-import requests, os, json, sqlite3, re, matplotlib, io, numpy as np, matplotlib.pyplot as plt
+import requests, os, json, sqlite3, re, matplotlib, io, numpy as np, matplotlib.pyplot as plt, time, csv
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.ticker import MaxNLocator
 
 matplotlib.use('SVG')
 
 app = Flask(__name__)
 
+SlidingWindowLengthInSeconds = 1 * 60 #2 * 60 * 60
+
 SITE_NAME = 'http://localhost:8183/'
 DB_NAME = 'tiles.db'
 
-def extractTileInfo(tileMatrixId):
+def extractTileInfo(statiticType, tileMatrixId):
     select = lambda cur: cur.execute(
-        "SELECT tileRow, tileCol, countedRequests FROM tiles WHERE tileMatrix = ?", (tileMatrixId,)).fetchall()
+        "SELECT tileRow, tileCol, {0} FROM tiles WHERE tileMatrix = ?".format(statiticType), (tileMatrixId,)).fetchall()
 
     return executeOnDatabase(select)
 
-@app.route('/tileMatrixHeatmap/<int:tileMatrixId>')
-def getTileMatrixHeatmap(tileMatrixId):
-    tileInfo = extractTileInfo(tileMatrixId)
+@app.route('/tileMatrixHeatmap/<string:statiticType>/<int:tileMatrixId>')
+def getTileMatrixHeatmap(statiticType, tileMatrixId):
+
+    availableStatisticsTypes = ['countedRequests', 'size', 'recency', 'frequency', 'target']
+
+    if statiticType not in availableStatisticsTypes:
+        return 'Incorrect statistic type. Chose one of the following: ' + ', '.join(availableStatisticsTypes)
+
+    tileInfo = extractTileInfo(statiticType, tileMatrixId)
 
     width = max(map(lambda row: row[0], tileInfo)) + 1
     length = max(map(lambda row: row[1], tileInfo)) + 1
@@ -54,16 +61,73 @@ def getTileMatrixHeatmap(tileMatrixId):
     FigureCanvas(fig).print_png(output)
     return Response(output.getvalue(), mimetype='image/png')
 
-def incrementCountedRequestsForTile(tilePosition):
+def updateStatisticsForTile(tilePosition, tileSizeInBytes):
+
+    requestUnixTimestamp = int(time.time())
+
+    select = lambda cur: cur.execute("""SELECT countedRequests, frequency, lastRequestedUnixTimestamp 
+        FROM tiles 
+        WHERE tileMatrix = ? AND tileRow = ? AND tileCol= ?""", tilePosition).fetchone()
+
+    lastRequestStatistics = executeOnDatabase(select)
+
+    countedRequests = lastRequestStatistics[0]
+    frequency = lastRequestStatistics[1]
+    lastRequestedUnixTimestamp = lastRequestStatistics[2]
+
+    timeSinceLastRequest = requestUnixTimestamp - lastRequestedUnixTimestamp
+
+    if timeSinceLastRequest <= SlidingWindowLengthInSeconds:
+        frequency += 1
+    else:
+        frequency = round(max(frequency / (timeSinceLastRequest/SlidingWindowLengthInSeconds), 1))
+
+    recency = 0.0
+
+    if countedRequests == 0:
+        recency = SlidingWindowLengthInSeconds
+    else:
+        recency = max(SlidingWindowLengthInSeconds, timeSinceLastRequest)
+
+    countedRequests += 1
+
+    mostRecentStatistics = (tileSizeInBytes, frequency, recency, countedRequests, requestUnixTimestamp)
+
     update = lambda cur: cur.execute(
-        "UPDATE tiles SET countedRequests = countedRequests + 1 WHERE tileMatrix = ? AND tileRow = ? AND tileCol= ?", tilePosition)
+        """UPDATE tiles 
+            SET
+                size = ?,
+                frequency = ?,
+                recency = ?,
+                countedRequests = ?,
+                lastRequestedUnixTimestamp = ?
+            WHERE tileMatrix = ? AND tileRow = ? AND tileCol= ?""",
+            (mostRecentStatistics + tilePosition))
 
     executeOnDatabase(update)
+
+    statisticsFileName = 'getTileStatistics.csv'
+
+    fileExsists = os.path.isfile(statisticsFileName)
+
+    with open(statisticsFileName, 'a', newline=os.linesep) as csvfile:
+        fieldnames = ['tile_position', 'requested_time', 'size', 'frequency', 'recency', 'target']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        if not fileExsists:
+            writer.writeheader()
+
+        writer.writerow(
+            {'tile_position': tilePosition,
+            'requested_time': requestUnixTimestamp, 
+            'size': tileSizeInBytes, 
+            'frequency': frequency, 
+            'recency': recency, 
+            'target': 0})
 
 @app.route('/<path:path>')
 def proxy(path):
     global SITE_NAME
-    global DB_NAME
 
     newUrl = request.url.replace('%2F', '/')
 
@@ -89,14 +153,6 @@ def proxy(path):
             json.dump(dictionary, requestLog)
             requestLog.write(os.linesep)
 
-    if 'gettile' in newUrlLower:
-
-        tileMatrix = re.search(r'tilematrix=(\d*)', newUrlLower).group(1)
-        tileRow = re.search(r'tilerow=(\d*)', newUrlLower).group(1)
-        tileCol = re.search(r'tilecol=(\d*)', newUrlLower).group(1)
-
-        incrementCountedRequestsForTile((tileMatrix, tileRow, tileCol))
-
     newUrl = newUrl.replace(request.host_url, SITE_NAME)
 
     resp = requests.request(
@@ -108,6 +164,14 @@ def proxy(path):
         allow_redirects=False)
 
     newContent = resp.content
+
+    if 'gettile' in newUrlLower:
+
+        tileMatrix = re.search(r'tilematrix=(\d*)', newUrlLower).group(1)
+        tileRow = re.search(r'tilerow=(\d*)', newUrlLower).group(1)
+        tileCol = re.search(r'tilecol=(\d*)', newUrlLower).group(1)
+
+        updateStatisticsForTile((tileMatrix, tileRow, tileCol), len(newContent))
 
     if isGetCapabilitiesRequest:
         newContent = resp.content.decode().replace(SITE_NAME, request.host_url)
@@ -133,7 +197,16 @@ def executeOnDatabase(func):
 def setupTilesDatabase(tileMatrixCount):
  
     def setupAndSeedTilesTable(cur):
-        cur.execute("CREATE TABLE tiles(tileMatrix INTEGER, tileRow INTEGER, tileCol INTEGER, countedRequests INTEGER)")
+        cur.execute("""CREATE TABLE tiles(
+            tileMatrix INTEGER, 
+            tileRow INTEGER, 
+            tileCol INTEGER, 
+            countedRequests INTEGER DEFAULT 0,
+            size INTEGER DEFAULT 0,
+            recency INTEGER DEFAULT 0,
+            frequency REAL DEFAULT 0,
+            target REAL DEFAULT 0,
+            lastRequestedUnixTimestamp INTEGER DEFAULT 0)""")
         cur.execute("CREATE UNIQUE INDEX tilePosition ON tiles(tileMatrix, tileRow, tileCol)")
 
         for tileMatrix in range(tileMatrixCount):
@@ -141,7 +214,7 @@ def setupTilesDatabase(tileMatrixCount):
             for tileRow in range(matrixSize):
                 for tileCol in range(matrixSize):
                     tilePosition = (tileMatrix, tileRow, tileCol)
-                    cur.execute("INSERT INTO tiles VALUES (?, ?, ?, 0)", tilePosition)
+                    cur.execute("INSERT INTO tiles VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0)", tilePosition)
 
     executeOnDatabase(setupAndSeedTilesTable)
 
