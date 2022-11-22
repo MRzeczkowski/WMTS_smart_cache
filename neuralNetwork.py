@@ -8,7 +8,7 @@ sns.set_style("whitegrid")
 
 from sklearn.model_selection import train_test_split
 
-SlidingWindowLengthInSeconds = 1 * 60 #2 * 60 * 60
+SlidingWindowLengthInSeconds = 2 * 60 * 60
 
 NN_ARCHITECTURE = [
     {"input_dim": 3, "output_dim": 3, "activation": "sigmoid"},
