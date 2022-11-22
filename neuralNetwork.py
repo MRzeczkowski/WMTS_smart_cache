@@ -8,7 +8,7 @@ sns.set_style("whitegrid")
 
 from sklearn.model_selection import train_test_split
 
-SlidingWindowLengthInSeconds = 2 * 60 * 60
+SlidingWindowLengthInSeconds = 1 * 60 * 60
 
 NN_ARCHITECTURE = [
     {"input_dim": 3, "output_dim": 3, "activation": "sigmoid"},
@@ -25,7 +25,7 @@ def sigmoid_backward(dA, Z):
     return dA * sig * (1 - sig)
 
 def tanh(Z):
-    return (np.exp(Z)-np.exp(-Z))/(np.exp(Z)+np.exp(-Z))
+    return (np.exp(Z) - np.exp(-Z)) / (np.exp(Z) + np.exp(-Z))
 
 def tanh_backward(dA, Z):
     t = tanh(Z)
@@ -62,9 +62,9 @@ def single_layer_forward_propagation(A_prev, W_curr, b_curr, activation="relu"):
     Z_curr = np.dot(W_curr, A_prev) + b_curr
     
     # selection of activation function
-    if activation is "tanh":
+    if activation == "tanh":
         activation_func = tanh
-    elif activation is "sigmoid":
+    elif activation == "sigmoid":
         activation_func = sigmoid
     else:
         raise Exception('Non-supported activation function')
@@ -130,9 +130,9 @@ def single_layer_backward_propagation(dA_curr, W_curr, b_curr, Z_curr, A_prev, a
     m = A_prev.shape[1]
     
     # selection of activation function
-    if activation is "tanh":
+    if activation == "tanh":
         backward_activation_func = tanh_backward
-    elif activation is "sigmoid":
+    elif activation == "sigmoid":
         backward_activation_func = sigmoid_backward
     else:
         raise Exception('Non-supported activation function')

@@ -6,7 +6,7 @@ matplotlib.use('SVG')
 
 app = Flask(__name__)
 
-SlidingWindowLengthInSeconds = 2 * 60 * 60
+SlidingWindowLengthInSeconds = 1 * 60 * 60
 
 SITE_NAME = 'http://localhost:8183/'
 DB_NAME = 'tiles.db'

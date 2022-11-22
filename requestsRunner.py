@@ -1,8 +1,9 @@
-import json, requests
+import json, requests, time
 
 if __name__ == '__main__':
     with open("./requestLog.txt", "r") as requestLog:
         for line in requestLog.readlines():
+            time.sleep(10)
             jsonObject = json.loads(line)
             requests.request(
                 method= jsonObject['method'],
