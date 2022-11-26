@@ -6,7 +6,7 @@ matplotlib.use('SVG')
 
 app = Flask(__name__)
 
-SlidingWindowLengthInSeconds = 1 * 60 * 60
+SlidingWindowLengthInSeconds = 1 * 60
 
 SITE_NAME = 'http://localhost:8183/'
 DB_NAME = 'tiles.db'
@@ -123,37 +123,17 @@ def updateStatisticsForTile(tilePosition, tileSizeInBytes):
             'size': tileSizeInBytes, 
             'frequency': frequency, 
             'recency': recency, 
-            'target': 0})
+            'target': 0.0})
 
 @app.route('/<path:path>')
 def proxy(path):
     global SITE_NAME
 
-    newUrl = request.url.replace('%2F', '/')
-
-    newUrlLower = newUrl.lower()
-
-    isGetCapabilitiesRequest = 'getcapabilities' in newUrlLower
-
     method = request.method
+    newUrl = request.url.replace('%2F', '/').replace(request.host_url, SITE_NAME)
     headers = {key: value for (key, value) in request.headers if key != 'Host'}
     data = request.get_data()
     cookies = request.cookies
-
-    if not isGetCapabilitiesRequest:
-        dictionary = {
-            "url": newUrl,
-            "method": method,
-            "headers": headers,
-            "data": data.decode("utf-8"),
-            "cookies": cookies
-        }
-
-        with open("./requestLog.txt", "a") as requestLog:
-            json.dump(dictionary, requestLog)
-            requestLog.write(os.linesep)
-
-    newUrl = newUrl.replace(request.host_url, SITE_NAME)
 
     resp = requests.request(
         method=method,
@@ -165,6 +145,8 @@ def proxy(path):
 
     newContent = resp.content
 
+    newUrlLower = newUrl.lower()
+
     if 'gettile' in newUrlLower:
 
         tileMatrix = re.search(r'tilematrix=(\d*)', newUrlLower).group(1)
@@ -173,7 +155,7 @@ def proxy(path):
 
         updateStatisticsForTile((tileMatrix, tileRow, tileCol), len(newContent))
 
-    if isGetCapabilitiesRequest:
+    if 'getcapabilities' in newUrlLower:
         newContent = resp.content.decode().replace(SITE_NAME, request.host_url)
 
     excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
