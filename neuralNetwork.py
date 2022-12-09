@@ -1,9 +1,10 @@
-import pandas as pd, numpy as np, os, math
+import pandas as pd, numpy as np, os, sqlite3
 
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 
 SlidingWindowLengthInSeconds = 1 * 60
+DB_NAME = 'tiles.db'
 
 NN_ARCHITECTURE = [
     {"input_dim": 3, "output_dim": 3, "activation": "sigmoid"},
@@ -29,8 +30,7 @@ def tanh_backward(dA, Z):
 def init_layers(nn_architecture, seed = 99):
     # random seed initiation
     np.random.seed(seed)
-    # number of layers in our neural network
-    number_of_layers = len(nn_architecture)
+
     # parameters storage initiation
     params_values = {}
 
@@ -157,7 +157,6 @@ def full_backward_propagation(Y_hat, Y, memory, params_values, nn_architecture):
         Z_curr = memory["Z" + str(layer_idx_curr)]
 
         W_curr = params_values["W" + str(layer_idx_curr)]
-        b_curr = params_values["b" + str(layer_idx_curr)]
 
         dA_prev, dW_curr, db_curr = single_layer_backward_propagation(
             dA_curr, W_curr, Z_curr, A_prev, activ_function_curr)
@@ -167,93 +166,18 @@ def full_backward_propagation(Y_hat, Y, memory, params_values, nn_architecture):
 
     return grads_values
 
-def updateAdam(params_values, grads_values, nn_architecture, learning_rate):
-    # ADAM hacks https://www.youtube.com/watch?v=zUZRUTJbYm8
-    m0 = np.zeros(len(params_values))
-    v0 = np.zeros(len(params_values))
-    t = 0
-    beta1 = 0.9
-    beta2 = 0.999
-    e = 1e-8
-
-    # iteration over network layers
-    for layer_idx, layer in enumerate(nn_architecture, 1):
-        t += 1
-        gt = grads_values["dW" + str(layer_idx)]
-        mt = beta1 * m0[t - 1] + (1 - beta1) * gt
-        vt = beta2 * m0[t - 1] + (1 - beta2) * gt**2
-        mtHat = m0[t]/(1 - beta1**t)
-        vtHat = v0[t]/(1 - beta2**t)
-
-        params_values["W" + str(layer_idx)] -= gt - learning_rate * mtHat/(math.sqrt(vtHat) + e)
-        params_values["b" + str(layer_idx)] -= learning_rate * grads_values["db" + str(layer_idx)]
-
-    return params_values
-
-def trainAdam(
-        X,
-        Y,
-        nn_architecture = NN_ARCHITECTURE,
-        epochs = 1000,
-        learning_rate = 0.01,
-        accuracy_threshold = 0.97,
-        accuracy_count_threshold = 200,
-        verbose=False):
-
-    return train(
-        X,
-        Y,
-        updateAdam,
-        nn_architecture,
-        epochs,
-        learning_rate,
-        momentum_constant=None,
-        accuracy_threshold=accuracy_threshold,
-        accuracy_count_threshold=accuracy_count_threshold,
-        verbose=verbose)
-
-def updateMomentum(params_values, grads_values, nn_architecture, learning_rate, momentum_constant = 0.9):
-    # iteration over network layers
-    for layer_idx, layer in enumerate(nn_architecture, 1):
-        params_values["W" + str(layer_idx)] -= learning_rate * grads_values["dW" + str(layer_idx)] + momentum_constant * params_values["W" + str(layer_idx)]
-        params_values["b" + str(layer_idx)] -= learning_rate * grads_values["db" + str(layer_idx)]
-
-    return params_values
-
-def trainMomentum(
-        X,
-        Y,
-        nn_architecture = NN_ARCHITECTURE,
-        epochs = 1000,
-        learning_rate = 0.01,
-        momentum_constant = 0.9,
-        accuracy_threshold = 0.97,
-        accuracy_count_threshold = 200,
-        verbose=False):
-
-    return train(
-        X,
-        Y,
-        updateMomentum,
-        nn_architecture,
-        epochs,
-        learning_rate,
-        momentum_constant,
-        accuracy_threshold,
-        accuracy_count_threshold,
-        verbose)
-
+# Based on https://towardsdatascience.com/lets-code-a-neural-network-in-plain-numpy-ae7e74410795
 def train(
         X,
         Y,
-        updateFunction,
-        nn_architecture,
-        epochs,
-        learning_rate,
-        momentum_constant,
-        accuracy_threshold,
-        accuracy_count_threshold,
-        verbose):
+        method='adam',
+        nn_architecture = NN_ARCHITECTURE,
+        epochs = 1000,
+        learning_rate = 0.001,
+        momentum_constant = 0.9,
+        accuracy_threshold = 0.97,
+        accuracy_count_threshold = 100,
+        verbose=False):
 
     # initiation of neural net parameters
     params_values = init_layers(nn_architecture, 2)
@@ -263,6 +187,27 @@ def train(
     accuracy_history = []
 
     sameAccuracyCounter = 0
+
+    # ADAM info https://www.youtube.com/watch?v=zUZRUTJbYm8
+    # https://www.youtube.com/watch?v=JXQT_vxqwIs
+    if method == 'adam':
+        m = {}
+        v = {}
+        # iteration over network layers
+        for idx, layer in enumerate(nn_architecture):
+            # we number network layers from 1
+            layer_idx = idx + 1
+
+            # extracting the number of units in layers
+            layer_input_size = layer["input_dim"]
+            layer_output_size = layer["output_dim"]
+
+            m[layer_idx] = np.zeros(shape=(layer_output_size, layer_input_size))
+            v[layer_idx] = np.zeros(shape=(layer_output_size, layer_input_size))
+
+        beta1 = 0.9
+        beta2 = 0.999
+        epsilon = 1e-8
 
     # performing calculations for subsequent iterations
     for i in range(epochs):
@@ -277,26 +222,41 @@ def train(
 
         if accuracy == accuracy_history[i - 1]:
             sameAccuracyCounter += 1
+        else:
+            sameAccuracyCounter = 0
 
-        if accuracy > accuracy_threshold or sameAccuracyCounter == accuracy_count_threshold:
+        if accuracy > accuracy_threshold or sameAccuracyCounter == accuracy_count_threshold: # converged
             return params_values
 
         # step backward - calculating gradient
         grads_values = full_backward_propagation(Y_hat, Y, cashe, params_values, nn_architecture)
+
         # updating model state
+        if method == 'adam':
+            for layer_idx, layer in enumerate(nn_architecture, 1):
+                gt = grads_values["dW" + str(layer_idx)]
+                m[layer_idx] = beta1 * m[layer_idx] + (1 - beta1) * gt
+                v[layer_idx] = beta2 * v[layer_idx] + (1 - beta2) * gt ** 2
+                mtHat = m[layer_idx] / (1 - beta1 ** (i + 1))
+                vtHat = v[layer_idx] / (1 - beta2 ** (i + 1))
 
-        if momentum_constant is None:
-            params_values = updateFunction(params_values, grads_values, nn_architecture, learning_rate)
+                params_values["W" + str(layer_idx)] -= gt - learning_rate * mtHat / (np.sqrt(vtHat) + epsilon)
+                params_values["b" + str(layer_idx)] -= learning_rate * grads_values["db" + str(layer_idx)]
+
+        elif method == 'momentum':            
+            for layer_idx, layer in enumerate(nn_architecture, 1):
+                params_values["W" + str(layer_idx)] -= learning_rate * grads_values["dW" + str(layer_idx)] + momentum_constant * params_values["W" + str(layer_idx)]
+                params_values["b" + str(layer_idx)] -= learning_rate * grads_values["db" + str(layer_idx)]
+
         else:
-            params_values = updateFunction(params_values, grads_values, nn_architecture, learning_rate, momentum_constant)
+            raise Exception('\'{0}\' training method is not supported'.format(method))
 
-        if(i % 1 == 0):
-            if(verbose):
-                print("Iteration: {:05} - cost: {:.5f} - accuracy: {:.20f} - learning rate: {:.3f}".format(i, cost, accuracy, learning_rate))
+        if(verbose):
+            print("Iteration: {:05} - cost: {:.5f} - accuracy: {:.20f} - learning rate: {:.3f}".format(i, cost, accuracy, learning_rate))
 
     return params_values
 
-def normalize(df, columns):
+def normalize_df(df, columns):
     yMin = -0.9
     yMax = 0.9
 
@@ -311,7 +271,7 @@ def normalize(df, columns):
 
 if __name__ == '__main__':
     trainingSetFileName = 'trainigSet.csv'
-    targetColumnName = 'target'
+    cacheabilityColumnName = 'cacheability'
     networkInput = ['size','frequency','recency']
 
     if not os.path.isfile(trainingSetFileName):
@@ -319,7 +279,6 @@ if __name__ == '__main__':
         workingSetDictionary = {}
 
         for index, row in df.loc[::-1].iterrows():
-
             tilePosition = row['tile_position']
             currentRequestedTime = row['requested_time']
 
@@ -329,15 +288,15 @@ if __name__ == '__main__':
                 laterRequestedTime = workingSetEntry[0]
 
                 if laterRequestedTime - currentRequestedTime < SlidingWindowLengthInSeconds:
-                    df.iloc[workingSetEntry[1], df.columns.get_loc(targetColumnName)] = 1.0
+                    df.iloc[workingSetEntry[1], df.columns.get_loc(cacheabilityColumnName)] = 1.0
 
             workingSetDictionary[tilePosition] = [currentRequestedTime, index]
 
         columnsToWorkOn = networkInput.copy()
 
-        normalizedSet = normalize(df, columnsToWorkOn)
+        normalizedSet = normalize_df(df, columnsToWorkOn)
 
-        columnsToWorkOn.append(targetColumnName)
+        columnsToWorkOn.append(cacheabilityColumnName)
 
         trainingSet = normalizedSet[columnsToWorkOn]
 
@@ -346,42 +305,61 @@ if __name__ == '__main__':
     trainingSet = pd.read_csv(trainingSetFileName)
 
     X = trainingSet[networkInput].values
-    y = trainingSet[targetColumnName].values
+    y = trainingSet[cacheabilityColumnName].values
 
     TEST_SIZE = 0.1
     epochs = 1000
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=42)
 
-    print("~"*100)
-    clf = MLPClassifier(hidden_layer_sizes=(3, 3), max_iter=epochs, activation='logistic', solver='lbfgs').fit(X_train, y_train)
-    lbfgsParams = clf.get_params()
-    print("lbfgs:           {0}".format(clf.score(X_test, y_test)))
+    # clf = MLPClassifier(hidden_layer_sizes=(3, 3), max_iter=epochs, activation='logistic', solver='lbfgs').fit(X_train, y_train)
+    # print("lbfgs:           {0}".format(clf.score(X_test, y_test)))
 
-    clf = MLPClassifier(hidden_layer_sizes=(3, 3), max_iter=epochs, activation='logistic', solver='sgd').fit(X_train, y_train)
-    sgdParams = clf.get_params()
-    print("sgd:             {0}".format(clf.score(X_test, y_test)))
+    # clf = MLPClassifier(hidden_layer_sizes=(3, 3), max_iter=epochs, activation='logistic', solver='sgd').fit(X_train, y_train)
+    # print("sgd:             {0}".format(clf.score(X_test, y_test)))
 
-    clf = MLPClassifier(hidden_layer_sizes=(3, 3), max_iter=epochs, activation='logistic', solver='adam').fit(X_train, y_train)
-    adamParams = clf.get_params()
-    print("adam:            {0}".format(clf.score(X_test, y_test)))
+    # clf = MLPClassifier(hidden_layer_sizes=(3, 3), max_iter=epochs, activation='logistic', solver='adam').fit(X_train, y_train)
+    # print("adam:            {0}".format(clf.score(X_test, y_test)))
 
-    params_values_adam = trainAdam(
+    params_values_adam = train(
         np.transpose(X_train),
-        np.transpose(y_train.reshape((y_train.shape[0], 1))))
+        np.transpose(y_train.reshape((y_train.shape[0], 1))),
+        method='adam')
 
-    Y_test_hat, customParams = full_forward_propagation(np.transpose(X_test), params_values_adam, NN_ARCHITECTURE)
+    Y_test_hat, _ = full_forward_propagation(np.transpose(X_test), params_values_adam, NN_ARCHITECTURE)
 
     acc_test = get_accuracy_value(Y_test_hat, np.transpose(y_test.reshape((y_test.shape[0], 1))))
     print("custom adam:     {0}".format(acc_test))
 
-    params_values_momentum = trainMomentum(
-        np.transpose(X_train),
-        np.transpose(y_train.reshape((y_train.shape[0], 1))))
+    # params_values_momentum = train(
+    #     np.transpose(X_train),
+    #     np.transpose(y_train.reshape((y_train.shape[0], 1))),
+    #     method='momentum')
 
-    Y_test_hat, customParams = full_forward_propagation(np.transpose(X_test), params_values_momentum, NN_ARCHITECTURE)
+    # Y_test_hat, _ = full_forward_propagation(np.transpose(X_test), params_values_momentum, NN_ARCHITECTURE)
 
-    acc_test = get_accuracy_value(Y_test_hat, np.transpose(y_test.reshape((y_test.shape[0], 1))))
-    print("custom momentum: {0}".format(acc_test))
-    print("~"*100)
-    print()
+    # acc_test = get_accuracy_value(Y_test_hat, np.transpose(y_test.reshape((y_test.shape[0], 1))))
+    # print("custom momentum: {0}".format(acc_test))
+    # print("~"*100)
+
+    con = sqlite3.connect(DB_NAME)
+
+    result = pd.read_sql_query("SELECT tileMatrix, tileRow, tileCol, size, recency, frequency, cacheability FROM tiles", con)
+
+    con.commit()
+
+    workData = normalize_df(result, networkInput)
+
+    targets, _ = full_forward_propagation(np.transpose(workData[networkInput]), params_values_adam, NN_ARCHITECTURE)
+
+    workData[cacheabilityColumnName] = np.transpose(targets[0])
+
+    rows = workData[['cacheability', 'tileMatrix', 'tileRow', 'tileCol']].values
+
+    con = sqlite3.connect(DB_NAME)
+    cur = con.cursor()
+
+    cur.executemany("UPDATE tiles SET cacheability = ? WHERE tileMatrix = ? AND tileRow = ? AND tileCol = ?", rows)
+
+    con.commit()
+    cur.close()

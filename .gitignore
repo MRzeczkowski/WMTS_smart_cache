@@ -2,3 +2,8 @@
 tiles.db
 getTileStatistics.csv
 trainigSet.csv
+trainingSets
+statistics
+NEURAL_NETWORK_PARAMS.pkl
+proxy/__pycache__/nerual_network.cpython-311.pyc
+BASELINE_NEURAL_NETWORK.pkl
