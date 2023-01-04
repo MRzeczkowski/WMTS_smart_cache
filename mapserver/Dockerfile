@@ -1,4 +1,4 @@
-FROM ubuntu:trusty
+FROM ubuntu:14.04
 
 ENV HARFBUZZ_VERSION=2.4.0 \
     MAPSERVER_VERSION=branch-7-2 \
@@ -27,10 +27,10 @@ RUN echo "ServerName MapserverContainer" >> /etc/apache2/apache2.conf
 
 RUN  a2enmod actions cgi alias && \
     find "${APACHE_CONFDIR}" -type f -exec sed -ri ' \
-       s!^(\s*CustomLog)\s+\S+!\1 /proc/self/fd/1!g; \
-       s!^(\s*ErrorLog)\s+\S+!\1 /proc/self/fd/2!g; \
-       ' '{}' ';'
-       
+    s!^(\s*CustomLog)\s+\S+!\1 /proc/self/fd/1!g; \
+    s!^(\s*ErrorLog)\s+\S+!\1 /proc/self/fd/2!g; \
+    ' '{}' ';'
+
 RUN chmod o+x /usr/local/bin/mapserv
 RUN ln -s /usr/local/bin/mapserv /usr/lib/cgi-bin/mapserv.fcgi
 RUN chmod 755 /usr/lib/cgi-bin

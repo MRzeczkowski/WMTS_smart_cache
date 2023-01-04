@@ -1,4 +1,4 @@
-FROM ubuntu:trusty
+FROM ubuntu:14.04
 
 ENV MAPCACHE_VERSION=branch-1-8 \
     APACHE_CONFDIR=/etc/apache2 APACHE_RUN_USER=www-data APACHE_RUN_GROUP=www-data \
@@ -30,9 +30,9 @@ RUN echo "ServerName MapcacheContainer" >> /etc/apache2/apache2.conf
 
 RUN a2enmod mapcache rewrite && \
     find "${APACHE_CONFDIR}" -type f -exec sed -ri ' \
-       s!^(\s*CustomLog)\s+\S+!\1 /proc/self/fd/1!g; \
-       s!^(\s*ErrorLog)\s+\S+!\1 /proc/self/fd/2!g; \
-       ' '{}' ';'
+    s!^(\s*CustomLog)\s+\S+!\1 /proc/self/fd/1!g; \
+    s!^(\s*ErrorLog)\s+\S+!\1 /proc/self/fd/2!g; \
+    ' '{}' ';'
 
 RUN apt-get clean && \
     rm --recursive --force /var/lib/apt/lists/partial/* /tmp/* /var/tmp/* && \
