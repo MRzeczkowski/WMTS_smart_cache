@@ -364,9 +364,9 @@ def update_statistics_for_tile(tile_position, tile_size):
         input = np.array([normalized_size, normalized_frequency,
                          normalized_recency])
         output = NEURAL_NETWORK.full_forward_propagation(input.reshape(3, 1))
-        cacheability = NEURAL_NETWORK.convert_prob_into_class(output.item(0))
+        cacheability = NEURAL_NETWORK.convert_prob_into_class(output).item(0)
 
-        cacheability_baseline = CLF.predict(input.reshape(1, 3))
+        cacheability_baseline = CLF.predict(input.reshape(1, 3)).item(0)
 
     most_recent_statistics = (tile_size, frequency,
                               recency, cacheability, cacheability_baseline, request_unix_timestamp)
