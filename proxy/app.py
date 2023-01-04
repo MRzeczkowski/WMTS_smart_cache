@@ -25,7 +25,7 @@ app = Flask(__name__)
 # Sliding Window Length
 SWL = 1 * 60
 
-SITE_NAME = 'http://mapcache/'
+SITE_NAME = 'http://mapcache/'  # for running locally use 'http://localhost:8183'
 DATA_FOLDER_NAME = './data/'
 DB_NAME = DATA_FOLDER_NAME + 'tiles.db'
 GET_TILE_STATISTICS_FILE = DATA_FOLDER_NAME + 'getTileStatistics.csv'
