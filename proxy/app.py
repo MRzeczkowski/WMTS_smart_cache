@@ -25,11 +25,11 @@ app = Flask(__name__)
 # Sliding Window Length
 SWL = 1 * 60
 
-SITE_NAME = 'http://localhost:8183/'
-DB_NAME = 'tiles.db'
-GET_TILE_STATISTICS_FILE = 'getTileStatistics.csv'
-NN_FILE_PATH = "NEURAL_NETWORK_PARAMS.pkl"
-BASELINE_NN_PATH = "BASELINE_NEURAL_NETWORK.pkl"
+SITE_NAME = 'http://mapcache/'
+DB_NAME = './data/tiles.db'
+GET_TILE_STATISTICS_FILE = './data/getTileStatistics.csv'
+NN_FILE_PATH = "./data/NEURAL_NETWORK_PARAMS.pkl"
+BASELINE_NN_PATH = "./data/BASELINE_NEURAL_NETWORK.pkl"
 NEURAL_NETWORK = None
 CLF = None
 
@@ -507,9 +507,12 @@ def get_max_from_db(column_name):
 
 
 if __name__ == '__main__':
+    print("1")
     if not os.path.isfile(DB_NAME):
+        print("2")
         setup_tiles_database()
     else:
+        print("3")
         MIN_SIZE = get_min_from_db("size")
         MAX_SIZE = get_max_from_db("size")
 
@@ -531,4 +534,4 @@ if __name__ == '__main__':
             CLF = pickle.load(nn_file)
             nn_file.close()
 
-    app.run(debug=False, port=9000)
+    app.run(debug=False, host="0.0.0.0", port=80)

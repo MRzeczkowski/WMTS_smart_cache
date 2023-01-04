@@ -13,3 +13,11 @@ services:
     ports:
       - "8183:80"
     container_name: mapcache
+
+  proxy:
+    build: ./proxy/.
+    ports:
+      - "8184:80"
+    volumes:
+      - ./proxy_data:/proxy/data
+    container_name: proxy
