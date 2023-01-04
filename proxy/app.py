@@ -26,10 +26,11 @@ app = Flask(__name__)
 SWL = 1 * 60
 
 SITE_NAME = 'http://mapcache/'
-DB_NAME = './data/tiles.db'
-GET_TILE_STATISTICS_FILE = './data/getTileStatistics.csv'
-NN_FILE_PATH = "./data/NEURAL_NETWORK_PARAMS.pkl"
-BASELINE_NN_PATH = "./data/BASELINE_NEURAL_NETWORK.pkl"
+DATA_FOLDER_NAME = './data/'
+DB_NAME = DATA_FOLDER_NAME + 'tiles.db'
+GET_TILE_STATISTICS_FILE = DATA_FOLDER_NAME + 'getTileStatistics.csv'
+NN_FILE_PATH = DATA_FOLDER_NAME + "NEURAL_NETWORK_PARAMS.pkl"
+BASELINE_NN_PATH = DATA_FOLDER_NAME + "BASELINE_NEURAL_NETWORK.pkl"
 NEURAL_NETWORK = None
 CLF = None
 
@@ -82,7 +83,7 @@ def save_neural_networks_to_files():
 
 @app.route('/train')
 def trigger_training():
-    training_set_file_name = 'trainigSet.csv'
+    training_set_file_name = DATA_FOLDER_NAME + 'trainigSet.csv'
     cacheability_column_name = 'cacheability'
     network_input = ['size', 'frequency', 'recency']
 
@@ -120,7 +121,7 @@ def trigger_training():
 
         training_set = normalized_set[columns_to_work_on]
 
-        training_sets_dir = 'trainingSets'
+        training_sets_dir = DATA_FOLDER_NAME + 'trainingSets'
 
         if not os.path.isdir(training_sets_dir):
             os.makedirs(training_sets_dir)
@@ -203,7 +204,7 @@ def trigger_training():
     #    os.remove(training_set_file_name)
 
     if os.path.isfile(GET_TILE_STATISTICS_FILE):
-        statisticsDir = './statistics'
+        statisticsDir = DATA_FOLDER_NAME + 'statistics'
         if not os.path.isdir(statisticsDir):
             os.makedirs(statisticsDir)
 
@@ -507,12 +508,9 @@ def get_max_from_db(column_name):
 
 
 if __name__ == '__main__':
-    print("1")
     if not os.path.isfile(DB_NAME):
-        print("2")
         setup_tiles_database()
     else:
-        print("3")
         MIN_SIZE = get_min_from_db("size")
         MAX_SIZE = get_max_from_db("size")
 
