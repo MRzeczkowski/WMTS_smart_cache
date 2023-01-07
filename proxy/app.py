@@ -16,7 +16,7 @@ from datetime import datetime
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
-from nerual_network import Nerual_Network
+from nerual_network import Neural_Network
 
 matplotlib.use('SVG')
 
@@ -83,7 +83,7 @@ def save_neural_networks_to_files():
 
 @app.route('/train')
 def trigger_training():
-    training_set_file_name = DATA_FOLDER_NAME + 'trainigSet.csv'
+    training_set_file_name = DATA_FOLDER_NAME + 'trainingSet.csv'
     cacheability_column_name = 'cacheability'
     network_input = ['size', 'frequency', 'recency']
 
@@ -127,7 +127,7 @@ def trigger_training():
             os.makedirs(training_sets_dir)
 
         training_set.to_csv(
-            '{0}/trainigSet_{1}.csv'.format(training_sets_dir, datetime.now()), index=False)
+            '{0}/trainingSet_{1}.csv'.format(training_sets_dir, datetime.now()), index=False)
 
     else:
         training_set = pd.read_csv(training_set_file_name)
@@ -138,13 +138,13 @@ def trigger_training():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
     global NEURAL_NETWORK
-    NEURAL_NETWORK = Nerual_Network()
+    NEURAL_NETWORK = Neural_Network()
 
     epochs = int(request.args.get('epochs') or 1000)
     learning_rate = float(request.args.get('learning_rate') or 0.001)
     training_method = request.args.get('method') or 'adam'
 
-    trainingRaport = NEURAL_NETWORK.train(
+    trainingReport = NEURAL_NETWORK.train(
         np.transpose(X_train),
         np.transpose(y_train.reshape((y_train.shape[0], 1))),
         epochs,
@@ -156,7 +156,7 @@ def trigger_training():
     acc_test = NEURAL_NETWORK.get_accuracy_value(
         Y_test_hat, np.transpose(y_test.reshape((y_test.shape[0], 1))))
 
-    trainingRaport += os.linesep + \
+    trainingReport += os.linesep + \
         "Custom {0} accuracy: {1}".format(training_method, acc_test)
 
     global CLF
@@ -168,7 +168,7 @@ def trigger_training():
         solver=training_method,
         nesterovs_momentum=False).fit(X_train, y_train)
 
-    trainingRaport += os.linesep + \
+    trainingReport += os.linesep + \
         "Sklearn {0} accuracy: {1}".format(
             training_method, CLF.score(X_test, y_test))
 
@@ -211,14 +211,14 @@ def trigger_training():
         shutil.move(GET_TILE_STATISTICS_FILE,
                     '{0}/getTileStatistics_{1}.csv'.format(statisticsDir, datetime.now()))
 
-    response = make_response(trainingRaport, 200)
+    response = make_response(trainingReport, 200)
     response.mimetype = "text/plain"
     return response
 
 
-def extract_tile_info(statitic_type, matrix_id):
+def extract_tile_info(statistic_type, matrix_id):
     def select(cur): return cur.execute(
-        "SELECT row, column, {0} FROM tiles WHERE matrix = ?".format(statitic_type), (matrix_id,)).fetchall()
+        "SELECT row, column, {0} FROM tiles WHERE matrix = ?".format(statistic_type), (matrix_id,)).fetchall()
 
     return execute_on_database(select)
 
@@ -236,12 +236,12 @@ def get_matrix_statistics(matrix_id):
 
     image_number = 1
 
-    for statitic_type in available_statistics_types:
+    for statistic_type in available_statistics_types:
 
-        if statitic_type not in available_statistics_types:
+        if statistic_type not in available_statistics_types:
             return 'Incorrect statistic type. Chose one of the following: ' + ', '.join(available_statistics_types)
 
-        tile_info = extract_tile_info(statitic_type, matrix_id)
+        tile_info = extract_tile_info(statistic_type, matrix_id)
 
         width = max(map(lambda row: row[0], tile_info)) + 1
         length = max(map(lambda row: row[1], tile_info)) + 1
@@ -255,7 +255,7 @@ def get_matrix_statistics(matrix_id):
 
         fig.add_subplot(rows, columns, image_number)
         image_number += 1
-        plt.title(statitic_type)
+        plt.title(statistic_type)
 
         if length == 1 and width == 1:
             plt.axis('off')
@@ -386,14 +386,14 @@ def update_statistics_for_tile(tile_position, tile_size):
 
     execute_on_database(update)
 
-    fileExsists = os.path.isfile(GET_TILE_STATISTICS_FILE)
+    fileExists = os.path.isfile(GET_TILE_STATISTICS_FILE)
 
-    with open(GET_TILE_STATISTICS_FILE, 'a', newline=os.linesep) as csvfile:
-        fieldnames = ['tile_position', 'requested_time',
-                      'size', 'frequency', 'recency', 'cacheability']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    with open(GET_TILE_STATISTICS_FILE, 'a', newline=os.linesep) as csv_file:
+        field_names = ['tile_position', 'requested_time',
+                       'size', 'frequency', 'recency', 'cacheability']
+        writer = csv.DictWriter(csv_file, fieldnames=field_names)
 
-        if not fileExsists:
+        if not fileExists:
             writer.writeheader()
 
         writer.writerow(
@@ -406,7 +406,7 @@ def update_statistics_for_tile(tile_position, tile_size):
 
 
 def run_with_retry(func, retry_count=3, wait_time_seconds=0.2):
-    for attempy in range(retry_count):
+    for attempt in range(retry_count):
         try:
             return func()
         except Exception as ex:
@@ -525,7 +525,7 @@ if __name__ == '__main__':
             NEURAL_NETWORK_PARAMS = pickle.load(nn_file)
             nn_file.close()
 
-        NEURAL_NETWORK = Nerual_Network(params_values=NEURAL_NETWORK_PARAMS)
+        NEURAL_NETWORK = Neural_Network(params_values=NEURAL_NETWORK_PARAMS)
 
     if os.path.isfile(BASELINE_NN_PATH):
         with open(BASELINE_NN_PATH, "rb") as nn_file:

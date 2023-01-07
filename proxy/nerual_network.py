@@ -6,7 +6,7 @@ from os import linesep
 
 
 # Based on https://towardsdatascience.com/lets-code-a-neural-network-in-plain-numpy-ae7e74410795
-class Nerual_Network:
+class Neural_Network:
     def __init__(
             self,
             params_values=None):
@@ -186,11 +186,11 @@ class Nerual_Network:
             momentum_constant=0.9,
             n_iter_no_change=10):
 
-        trainingRaport = 'Training raport:'
+        trainingReport = 'Training report:'
 
         def append_line_to_report(log):
-            nonlocal trainingRaport
-            trainingRaport += linesep + log
+            nonlocal trainingReport
+            trainingReport += linesep + log
 
         tolerance_for_optimization = 1.0e-4
 
@@ -274,7 +274,7 @@ class Nerual_Network:
                 else:
                     no_change_counter = 0
 
-                # seems like not much progess is made so we'll exit this session, reinitialize and try again
+                # seems like not much progress is made so we'll exit this session, reinitialize and try again
                 if no_change_counter == n_iter_no_change:
                     break
 
@@ -319,11 +319,11 @@ class Nerual_Network:
                         self.params_values["b" + str(layer_idx)] -= learning_rate * \
                             grads_values["db" + str(layer_idx)]
 
-            # 95% is good enough - if we achive it we terminate training
+            # 95% is good enough - if we achieve it we terminate training
             if best_accuracy > 0.95:
                 break
 
-            # checking if network has been reintialized too many times
+            # checking if network has been reinitialized too many times
             # with current `learing_rate` we may never converge
             if reinitialization_count == 10:
                 append_line_to_report(
@@ -341,7 +341,7 @@ class Nerual_Network:
                         method, proposed_learning_rate))
                 break
 
-            # network reintialization
+            # network reinitialization
             # sometimes networks initial values are too bad to converge to good accuracy
             # we'll try again with different starting point
             append_line_to_report(
@@ -360,4 +360,4 @@ class Nerual_Network:
             append_line_to_report(
                 'Reinitialized {0} times'.format(reinitialization_count))
 
-        return trainingRaport
+        return trainingReport
