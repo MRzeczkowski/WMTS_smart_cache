@@ -33,7 +33,7 @@ Here is an overview of how GetTile requests are handled by the system:
 ![](docs_images/get-tile-overview.png)
 
 # Proxy details
-Proxy is written in Python and uses Flask. 
+Proxy is written in Python and uses Flask. Code is in file `proxy/app.py`
 On startup the server checks if its working files exist. All files used by the Proxy can be found in `proxy_data` directory.
 
 Files checked on start up are:
@@ -85,7 +85,7 @@ When training is triggered we check for a `trainingSet.csv` file that will be sp
 This endpoint has three query string fields:
  - `epochs` - the number of training epochs - 1000 by default
  - `learning_rate` - value of the learning rate hyperparameter - 0.001 by default
- - `method` - training method to be used. Two are supported: adam (method proposed by Kinga and Ba in [6]) and sgd (Stochastic Gradient Descent with momentum constant equal 0.9). By default adam is used. Depending on the training method different learning rates should be used: adam ~= 0.001, sgd ~= 0.05.
+ - `method` - training method to be used. Two are supported: adam (method proposed by Kinmga and Ba in [6]) and sgd (Stochastic Gradient Descent with momentum constant equal 0.9). By default adam is used. Depending on the training method different learning rates should be used: adam ~= 0.001, sgd ~= 0.05.
 
 Above mentioned parameters are used by both custom and Sklearn based neural networks. Nesterovs momentum optimization is disabled in Sklearn because it was not implemented in the custom neural network. MLPClassifier was used [5].
 
@@ -111,7 +111,7 @@ There is also some file moving involved for keeping old `getTileStatistics.csv` 
 ## Custom neural network details
 The architecture of both Sklearn and custom neural networks is similar: 3 input nodes, 2 hidden layers with 3 nodes each, output layer with 1 node. The only difference are activation functions. Same as in [1] the activation function in hidden nodes is the sigmoid function and for output node it's the hyperbolic tangent. Sklearn does not support having different activation functions in output layers so each node uses the sigmoid function.
 
-The custom neural network code is in a separate file `neural_network.py` and is strongly inspired by this article - [7].
+The custom neural network code is in a separate file `proxy/neural_network.py` and is strongly inspired by this article - [7].
 
 This is a simple neural network so there is no need to describe it in detail however some issues were encountered and some implementation details differ from the aforementioned article and they are worth highlighting.
 
@@ -149,12 +149,9 @@ The traffic is analyzed - statistics are calculated and put through neural netwo
 
 Then you can see this data by sending the following request - http://localhost:8184/matrixStatistics/6
 
-Output similar to this will be generated:
-![](docs_images/matrix-statistics.png)
-
 Train networks using http://localhost:8184/train
 
-Remember to remove the old training set file before training if you'd like to train on data generated yourself.
+Remember to remove the old training set file before training if you'd like to train on data generated yourself. You can also uncomment lines 203 and 204 in `proxy/app.py` for deletion to be automatic.
 
 ---
 ---
