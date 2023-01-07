@@ -30,6 +30,7 @@ Since containers are in the same network they can communicate with each other fr
 When you send a WMTS request to the Proxy it is forwarded to Mapcache. If it's a `GetTile` request Mapcache checks if the map tile is present in its cache or not. If it isn't a `GetMap` request it's send to Mapserver to generate the tile. Once received by Mapcache it is stored in cache send back to Proxy which calculates statistics described in [1].
 
 Here is an overview of how GetTile requests are handled by the system:
+
 ![](docs_images/get-tile-overview.png)
 
 # Proxy details
@@ -139,8 +140,11 @@ Use following request for `GetCapabilities`:
 http://localhost:8184/USGS/wmts?REQUEST=Getcapabilities&SERVICE=WMTS&VERSION=1.0.0
 
 In QGIS create a new WMTS connection by right clicking on 'WMS/WMTS' in the 'Browser' panel on the left and clicking on New Connection:
+
 ![](docs_images/browser-new-connection.png)
+
 Then using above request, like this:
+
 ![](docs_images/qgis-create-connection.png)
 
 By doing so you've connected to the Proxy and are now sending `GetTile` requests to it and you can browse the orthophoto map of San Francisco (photos from 2015).
