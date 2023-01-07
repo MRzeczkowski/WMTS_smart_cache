@@ -43,9 +43,6 @@ class Neural_Network:
             sizes_sum = layer_input_size + layer_output_size
             r = sqrt(6.0 / sizes_sum)
 
-            if layer["activation"] == 'sigmoid':
-                r *= 4.0
-
             low, high = -r, r
 
             self.params_values['W' + str(layer_idx)] = generator.uniform(
