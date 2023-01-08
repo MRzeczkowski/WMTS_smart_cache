@@ -3,7 +3,7 @@ This project is a demonstration of a WMTS tile cache replacement strategy that i
 
 It was implemented based on ideas described by Garcia et al. in [1]. Romano and ElAarag in [2] describe a similar approach used for a more general case of web servers. The second document describes the Sliding Window idea in more depth - it's advised to read both documents for a more thorough understanding of this strategy.
 
-For a brief summary of [1] see this slide show [3].
+For a brief summary of [1] see [this slide show](https://www.slideshare.net/beniamino/an-adaptive-neural-networkbased-method-for-tile-replacement-in-a-web-map-cache).
 
 This document serves as brief documentation of the project explaining how to use it and what it does - details of the strategy can be found in aforementioned research papers.
 
@@ -38,7 +38,7 @@ Proxy is written in Python and uses Flask. Code is in file `proxy/app.py`
 On startup the server checks if its working files exist. All files used by the Proxy can be found in `proxy_data` directory.
 
 Files checked on start up are:
- - `tiles.db` - Sqlite database with table `tiles` containing a row for each tile that can be requested. Statistics associated with each tile are kept there, the last time it was requested (used for calculating statistics) and the output of neural networks. A tile can be identified by three columns - `matrix`, `row`, `column`. Refer to [4] for details on the topic of Tile Matrix Sets. Statistics are described in [1] and [2]. `cacheability` column indicates if in this moment in time the tile is worth keeping in cache - this value is set by custom neural network created as part of this project. `cacheability_baseline` indicates the same as previous column but is set by a neural network created using Sklearn - it was added to compare the custom network to a state of the art implementation.
+ - `tiles.db` - Sqlite database with table `tiles` containing a row for each tile that can be requested. Statistics associated with each tile are kept there, the last time it was requested (used for calculating statistics) and the output of neural networks. A tile can be identified by three columns - `matrix`, `row`, `column`. Refer to [this document](https://www.ogc.org/standards/tms) for details on the topic of Tile Matrix Sets. Statistics are described in [1] and [2]. `cacheability` column indicates if in this moment in time the tile is worth keeping in cache - this value is set by custom neural network created as part of this project. `cacheability_baseline` indicates the same as previous column but is set by a neural network created using Sklearn - it was added to compare the custom network to a state of the art implementation.
  If this database does not exist then it is created - see line 475. If it exists it will be queried for highest and lowest values of each statistic and these will be used for on the fly data normalization.
  - `NEURAL_NETWORK_PARAMS.pkl` - binary file that contains parameters of the custom neural network. Read into memory if exists.
  - `BASELINE_NEURAL_NETWORK.pkl` - binary file with Sklearn neural network. Read into memory if exists.
@@ -86,9 +86,9 @@ When training is triggered we check for a `trainingSet.csv` file that will be sp
 This endpoint has three query string fields:
  - `epochs` - the number of training epochs - 1000 by default
  - `learning_rate` - value of the learning rate hyperparameter - 0.001 by default
- - `method` - training method to be used. Two are supported: adam (method proposed by Kinmga and Ba in [6]) and sgd (Stochastic Gradient Descent with momentum constant equal 0.9). By default adam is used. Depending on the training method different learning rates should be used: adam ~= 0.001, sgd ~= 0.05.
+ - `method` - training method to be used. Two are supported: adam ([method proposed by Kinmga and Ba](https://doi.org/10.48550/arXiv.1412.6980)) and sgd (Stochastic Gradient Descent with momentum constant equal 0.9). By default adam is used. Depending on the training method different learning rates should be used: adam ~= 0.001, sgd ~= 0.05.
 
-Above mentioned parameters are used by both custom and Sklearn based neural networks. Nesterovs momentum optimization is disabled in Sklearn because it was not implemented in the custom neural network. MLPClassifier was used [5].
+Above mentioned parameters are used by both custom and Sklearn based neural networks. Nesterovs momentum optimization is disabled in Sklearn because it was not implemented in the custom neural network. [MLPClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html) was used.
 
 Example request:
 http://localhost:8184/train?epochs=1000&learning_rate=0.05&method=sgd
@@ -112,13 +112,13 @@ There is also some file moving involved for keeping old `getTileStatistics.csv` 
 ## Custom neural network details
 The architecture of both Sklearn and custom neural networks is similar: 3 input nodes, 2 hidden layers with 3 nodes each, output layer with 1 node. The only difference are activation functions. Same as in [1] the activation function in hidden nodes is the sigmoid function and for output node it's the hyperbolic tangent. Sklearn does not support having different activation functions in output layers so each node uses the sigmoid function.
 
-The custom neural network code is in a separate file `proxy/neural_network.py` and is strongly inspired by this article - [7].
+The custom neural network code is in a separate file `proxy/neural_network.py` and is strongly inspired by [this article](https://towardsdatascience.com/lets-code-a-neural-network-in-plain-numpy-ae7e74410795).
 
 This is a simple neural network so there is no need to describe it in detail however some issues were encountered and some implementation details differ from the aforementioned article and they are worth highlighting.
 
 ### Network initialization
 It was found that depending on the initial values the network may not converge to a satisfactory accuracy.
-The Normalized Xavier Weight Initialization method was used as described in [8].
+The Normalized Xavier Weight Initialization method was used as described in [this article](https://machinelearningmastery.com/weight-initialization-for-deep-learning-neural-networks/).
 However even using method the network would sometimes not converge so a network reinitialization approach is used. Basically if we don't hit accuracy over 95% we'll reinitialize the weights and try again - up to 10 times.
 
 ### Early stoppage
@@ -163,15 +163,3 @@ Remember to remove the old training set file before training if you'd like to tr
 [1] "An Adaptive Neural Network-Based Method for Tile Replacement in a Web Map Cache" (DOI:10.1007/978-3-642-21928-3_6) by Garcia et. al.
 
 [2] "A neural network proxy cache replacement strategy and its implementation in the Squid proxy server" (DOI:10.1007/s00521-010-0442-0) by Romano and ElAarag
-
-[3] https://www.slideshare.net/beniamino/an-adaptive-neural-networkbased-method-for-tile-replacement-in-a-web-map-cache
-
-[4] https://www.ogc.org/standards/tms
-
-[5] https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html
-
-[6] "Adam: A Method for Stochastic Optimization" by Kingma and Ba (https://doi.org/10.48550/arXiv.1412.6980)
-
-[7] https://towardsdatascience.com/lets-code-a-neural-network-in-plain-numpy-ae7e74410795
-
-[8] https://machinelearningmastery.com/weight-initialization-for-deep-learning-neural-networks/
