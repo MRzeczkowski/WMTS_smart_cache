@@ -27,7 +27,7 @@ Mapsever and Mapcache components will not be described in detail since the least
 # System overview
 Since containers are in the same network they can communicate with each other freely, only the Proxy is exposed - on port 8184.
 
-When you send a WMTS request to the Proxy it is forwarded to Mapcache. If it's a `GetTile` request Mapcache checks if the map tile is present in its cache or not. If it isn't, a `GetMap` request it sent to Mapserver to generate the tile. Once received by Mapcache it's stored in disc cache and then sent back to Proxy which calculates statistics described in [1].
+When you send a WMTS request to the Proxy it is forwarded to Mapcache. If it's a `GetTile` request Mapcache checks if the map tile is present in its cache or not. If it isn't present, a `GetMap` request is sent to Mapserver to generate the tile. Once received by Mapcache it's stored in disc cache and then sent back to Proxy which calculates statistics described in [1].
 
 Here is an overview of how `GetTile` requests are handled by the system:
 
@@ -37,7 +37,7 @@ Here is an overview of how `GetTile` requests are handled by the system:
 Proxy is written in Python and uses Flask. Code is in `proxy/app.py`
 
 On startup the server checks if its working files exist. All files used by the Proxy can be found in `proxy_data` directory.
-Files checked on start up are:
+Files checked on startup are:
  - `tiles.db` - Sqlite database with table `tiles` containing a row for each tile that can be requested. Statistics associated with each tile are kept there, the last time it was requested (used for calculating statistics) and the output of neural networks. A tile can be identified by three columns - `matrix`, `row`, `column`. Refer to [this document](https://www.ogc.org/standards/tms) for details on the topic of Tile Matrix Sets. Statistics are described in [1] and [2]. `cacheability` column indicates if in this moment in time the tile is worth keeping in cache - this value is set by custom neural network created as part of this project. `cacheability_baseline` means the same as previous column but is set by a neural network created using Sklearn - it was added to compare the custom network to a state of the art implementation.
  If this database does not exist then it is created - see line 475. If it exists it will be queried for highest and lowest values of each statistic and these will be used for on the fly data normalization - required to feed data to neural networks during request handling.
  - `NEURAL_NETWORK_PARAMS.pkl` - binary file that contains parameters of custom neural network. Read into memory if exists.
@@ -48,17 +48,17 @@ Both files associated with neural networks are created/updated when training is 
 Proxy has three endpoints: 'default' WMTS related endpoint and two unique to this server.
 
 ## WMTS
-The 'default' endpoint forwards requests to Mapcache - must be correct WMTS requests, otherwise Mapcache will return an error. See line 417.
+The 'default' endpoint forwards requests to Mapcache - must be correct WMTS requests, otherwise Mapcache will return an error - see line 417.
 
 WMTS requests are either `GetCapabilities` or `GetTile`.
 
-`GetCapabilities` will simply be forwarded to Mapcache and the response will be manipulated to create an illusion that the Proxy actually generated the response - see line 451. 
+`GetCapabilities` are forwarded to Mapcache and the response will be manipulated to create an illusion that the Proxy actually generated the response - see line 451. 
 
 Example request: http://localhost:8184/USGS/wmts?REQUEST=Getcapabilities&SERVICE=WMTS&VERSION=1.0.0
 
 Response is an XML file that describes the USGS service.
 
-`GetTile` is a bit more complex since it involves calculating statistics based on historical data and putting them through neural networks to calculate if the tile is worth keeping in cache or not. On each request we update `tiles` row corresponding to the tile.
+`GetTile` is also forwarded to Mapcache but is a bit more complex since it involves calculating statistics based on historical data and putting them through neural networks to calculate if the tile is worth keeping in cache or not. On each request we update `tiles` row corresponding to the tile.
 We keep track of the highest and lower values of each statistic and normalize them on the fly to feed them to neural networks - see lines 323 and 285. Each `GetTile` requests details are logged in `getTileStatistics.csv` to create a training set for neural networks.
 
 Example request: http://localhost:8184/USGS/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=San_Francisco_2015&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=San_Francisco&TILEMATRIX=6&TILEROW=25&TILECOL=25
@@ -119,7 +119,7 @@ This is a simple neural network so there is no need to describe it in detail how
 ### Network initialization
 It was found that depending on initial values the network may not converge to a satisfactory accuracy.
 The Normalized Xavier Weight Initialization method was used as described in [this article](https://machinelearningmastery.com/weight-initialization-for-deep-learning-neural-networks/).
-However even using method the network would sometimes not converge so a network reinitialization approach is used. Basically if we don't hit accuracy over 95% we'll reinitialize the weights and try again - up to 10 times.
+However even using this method the network would sometimes not converge so a network reinitialization approach is used. Basically if we don't hit accuracy over 95% after going through all epochs we'll reinitialize weights and try again - up to 10 times.
 
 ### Parameter selection
 During training we keep track of the parameters that got us the best accuracy and after all the training is done we use them.
@@ -157,7 +157,6 @@ Train networks using http://localhost:8184/train
 
 Remember to remove the old training set file before training if you'd like to train on data generated yourself. You can also uncomment lines 203 and 204 in `proxy/app.py` for deletion to be automatic.
 
----
 ---
 # Bibliography
 [1] "An Adaptive Neural Network-Based Method for Tile Replacement in a Web Map Cache" (DOI:10.1007/978-3-642-21928-3_6) by Garcia et. al.
